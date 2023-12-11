@@ -1,51 +1,86 @@
-# Copyright (c) Streamlit Inc. (2018-2022) Snowflake Inc. (2022)
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+import sqlite3
 import streamlit as st
-from streamlit.logger import get_logger
 
-LOGGER = get_logger(__name__)
+def create_database():
+    
+    conn = sqlite3.connect('customers.db')
+    c = conn.cursor()
+    c.execute("""
+    SELECT name FROM sqlite_master WHERE type='table' AND name='customers'
+    """)
+    if not c.fetchone():
+        c.execute('''CREATE TABLE customers
+                     (name text, address text, phone text)''')
+        conn.commit()
+    conn.close()
+
+def add_customer(name, address, phone):
+    conn = sqlite3.connect('customers.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO customers VALUES (?, ?, ?)", (name, address, phone))
+    conn.commit()
+    conn.close()
+
+def delete_customer(name):
+    conn = sqlite3.connect('customers.db')
+    c = conn.cursor()
+    c.execute("DELETE FROM customers WHERE name=?", (name,))
+    conn.commit()
+    conn.close()
+
+def update_customer(name, address, phone):
+    conn = sqlite3.connect('customers.db')
+    c = conn.cursor()
+    c.execute("UPDATE customers SET address = ?, phone = ? WHERE name = ?", (address, phone, name))
+    conn.commit()
+    conn.close()
+
+def view_customers():
+    conn = sqlite3.connect('customers.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM customers")
+    customers = c.fetchall()
+    conn.close()
+    return customers
+
+def search_customer(name, phone):
+    conn = sqlite3.connect('customers.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM customers WHERE name=? OR phone=?", (name, phone))
+    customers = c.fetchall()
+    conn.close()
+    return customers
 
 
-def run():
-    st.set_page_config(
-        page_title="Hello",
-        page_icon="👋",
-    )
+def main():
+    st.title("Vevők adatbázis")
+    
+    
+    create_database()
 
-    st.write("# Welcome to Streamlit! 👋")
+    name = st.text_input("Név")
+    address = st.text_input("Cím")
+    phone = st.text_input("Telefonszám")
+    st.sidebar.header("Válassz műveletet!")
+    if st.sidebar.button("Hozzáad"):
+        add_customer(name, address, phone)
 
-    st.sidebar.success("Select a demo above.")
+    if st.sidebar.button("Töröl"):
+        delete_customer(name)
 
-    st.markdown(
-        """
-        Streamlit is an open-source app framework built specifically for
-        Machine Learning and Data Science projects.
-        **👈 Select a demo from the sidebar** to see some examples
-        of what Streamlit can do!
-        ### Want to learn more?
-        - Check out [streamlit.io](https://streamlit.io)
-        - Jump into our [documentation](https://docs.streamlit.io)
-        - Ask a question in our [community
-          forums](https://discuss.streamlit.io)
-        ### See more complex demos
-        - Use a neural net to [analyze the Udacity Self-driving Car Image
-          Dataset](https://github.com/streamlit/demo-self-driving)
-        - Explore a [New York City rideshare dataset](https://github.com/streamlit/demo-uber-nyc-pickups)
-    """
-    )
+    if st.sidebar.button("Aktualizál"):
+        update_customer(name, address, phone)
 
 
-if __name__ == "__main__":
-    run()
+    if st.sidebar.button("Keres"):
+        customers = search_customer(name, phone)
+        st.header("Customers File")
+        st.table(customers)   
+
+    if st.sidebar.button("Megtekint"):
+        customers = view_customers()
+        st.header("Customers File")
+        st.table(customers)
+
+if __name__ == '__main__':
+    main()
